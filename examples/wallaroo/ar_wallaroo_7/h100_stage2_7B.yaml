@@ -1,0 +1,110 @@
+wandb:
+  entity: null
+  resume: 'auto'
+  key: 169474f7368c9ec4331254567954d271aafdc7d4
+
+use_fsdp: False 
+use_deepspeed: True
+deepspeed_config: './scripts/zero2.json'
+grad_checkpointing: False
+auto_resume: True
+
+experiment:
+    project: "ar_wallaroo_7"
+    name: "wallaroo_7B_stage2"
+    output_dir: "/zhujie54/wallaroo_checkpoints/wallaroo_7B_stage2/"
+    max_train_examples_t2i: 40000000
+    max_train_examples_mmu: 40000000
+    save_every: 2500
+    eval_every: 2500
+    generate_every: 2500
+    log_every: 50
+    log_grad_norm_every: 50
+    resume_from_checkpoint: 'latest'
+    load_from: path/to/stage1/checkpoint/checkpoint.ckpt
+model:
+    vqvae_model:
+        type: 'LlamaGen_16x16'
+        pretrained_model_path: '/zhujie54/LlamaGen_16x16/vq_ds16_t2i.pt'
+        params:
+          codebook_size: 16384
+          codebook_embed_dim: 8
+
+    wallaroo:
+        load_from_wallaroo: False
+        pretrained_model_path: ""
+        w_pixel_vae: False
+        t2i_generate_method: 'no_line'
+        vocab_size: 152064
+        llm_vocab_size: 152064
+        llm_model_path: 'Qwen/Qwen2.5-VL-7B-Instruct'
+        hidden_size: 3584
+        codebook_size: 16384
+        codebook_embed_dim: 8
+        rope_scaling:
+            type: 'mrope'
+            mrope_section: [16, 24, 24]
+
+        cache_dir: "/huggingface_models"
+
+    gradient_checkpointing: True
+
+dataset:
+    gen_type: "t2i"
+    und_type: "llava_und"
+    combined_loader_mode: "max_size_cycle"
+    params:
+        train_t2i_shards_path_or_url: "path/to/t2i_datatset/data1:path/to/t2i_datatset/data2..."
+        train_mmu_shards_path_or_url: "path/to/und_datatset/data1:path/to/und_datatset/data2..."
+        eval_mmu_shards_path_or_url: "/public_dataset/mxq/DATA_CAPTION_EVAL_INTERNVL2_GLM4VCROP_GPT4o/"
+        validation_prompts_file: "/mtdit/asset/vcg_eval_cn.txt"
+        mmu_validation_imgs: '/wallaroo/mmu_validation/*.jpg'
+        shuffle_buffer_size: 1000
+        num_workers: 8
+        pin_memory: True
+        persistent_workers: True
+
+    preprocessing: #
+        max_seq_length: 2560 # 
+        t2i_max_seq_length: 768 # 
+        t2i_resolution: 384
+        vqvae_downscale: 16
+        hw_indicator: False
+        uncond_p: 0.1
+        SEG_IMAGE_FACTOR: 28
+        SEG_MIN_PIXELS: 12544 # 16 * 28 * 28
+        SEG_MAX_PIXELS: 254016 # 144 * 28 * 28 324 512
+        MAX_RATIO: 200
+
+optimizer:
+    name: adamw
+    params: # default adamw params
+        learning_rate: 1e-4
+        scale_lr: False # scale learning rate by total batch size
+        beta1: 0.9
+        beta2: 0.95
+        weight_decay: 0.0
+        epsilon: 1e-8
+
+lr_scheduler:
+    scheduler: "constant_with_warmup"
+    params:
+        learning_rate: ${optimizer.params.learning_rate}
+        warmup_steps: 0
+
+training:
+    gradient_accumulation_steps: 1
+    batch_size_t2i: 4
+    batch_size_mmu: 1
+    mixed_precision: "bf16"
+    enable_tf32: True
+    seed: 719
+    max_train_steps: 1000000
+    overfit_one_batch: False
+    cond_dropout_prob: 0.1
+    min_masking_rate: 0.0
+    label_smoothing: 0.0
+    max_grad_norm: 1.0
+    guidance_scale: 3
+    t2i_coeff: 1.0
+    mmu_coeff: 1.0

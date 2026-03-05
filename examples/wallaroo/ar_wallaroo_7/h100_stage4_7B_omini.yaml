@@ -1,0 +1,120 @@
+wandb:
+  entity: null
+  resume: 'auto'
+  key: 169474f7368c9ec4331254567954d271aafdc7d4
+
+use_fsdp: False 
+use_deepspeed: True
+deepspeed_config: './scripts/zero2.json'
+grad_checkpointing: False
+auto_resume: True
+
+experiment:
+    project: "ar_wallaroo_omini"
+    name: "wallaroo_7B_stage4_omini"
+    output_dir: "/zhujie54/wallaroo_checkpoints/wallaroo_7B_stage4_omini"
+    max_train_examples_t2i: 40000000
+    max_train_examples_mmu: 40000000
+    save_every: 500
+    eval_every: 1000
+    generate_every: 1000
+    log_every: 50
+    log_grad_norm_every: 50
+    resume_from_checkpoint: 'latest'
+    load_from: path/to/stage3_mar_512/checkpoint/checkpoint.ckpt
+
+model:
+    vqvae_model:
+        type: 'LlamaGen_16x16'
+        pretrained_model_path: '/zhujie54/LlamaGen_16x16/vq_ds16_t2i.pt'
+        params:
+          codebook_size: 16384
+          codebook_embed_dim: 8
+
+    wallaroo:
+        load_from_wallaroo: False
+        pretrained_model_path: ""
+        w_pixel_vae: True
+        pixel_pad_left: True
+        t2i_generate_method: 'line_break'
+        i2i_generate_method: 'line_break'
+        vocab_size: 152064 
+        llm_vocab_size: 152064 
+        llm_model_path: 'Qwen/Qwen2.5-VL-7B-Instruct'
+        hidden_size: 3584
+        codebook_size: 16384
+        codebook_embed_dim: 8
+        rope_scaling:
+            type: 'mrope'
+            mrope_section: [16, 24, 24]
+
+        cache_dir: "/huggingface_models"
+
+    gradient_checkpointing: True
+
+dataset:
+    gen_type: "mar_t2i"
+    und_type: "llava_und"
+    edit_type: "mar_i2i"
+    combined_loader_mode: "max_size_cycle" 
+    params:
+        train_t2i_shards_path_or_url: "path/to/t2i_datatset/data1:path/to/t2i_datatset/data2..."
+        train_mmu_shards_path_or_url: "path/to/und_datatset/data1:path/to/und_datatset/data2..." 
+        train_i2i_shards_path_or_url: "path/to/i2i_datatset/data1:path/to/i2i_datatset/data2..." 
+        validation_prompts_file: "/mtdit/asset/vcg_eval_cn.txt"
+        mmu_validation_imgs: '/wallaroo/mmu_validation/*.jpg'
+        shuffle_buffer_size: 1000
+        num_workers: 8
+        pin_memory: True
+        persistent_workers: True
+
+    preprocessing:
+        max_seq_length: 1504 
+        t2i_max_seq_length:  1632 
+        i2i_max_seq_length: 2624 
+        t2i_resolution: 512
+        i2i_resolution: 512
+        vqvae_downscale: 16
+        hw_indicator: True
+        uncond_p: 0.1
+        SEG_IMAGE_FACTOR: 28
+        SEG_MIN_PIXELS: 12544 # 16 * 28 * 28
+        SEG_MAX_PIXELS: 188160 # 28 * 28 * 1024/1280 * 28 * 28 614656
+        MAX_RATIO: 200
+        aspect_ratio_type: 'ASPECT_RATIO_512'
+
+
+optimizer:
+    name: adamw
+    params: # default adamw params
+        learning_rate: 1e-5
+        scale_lr: False # scale learning rate by total batch size
+        beta1: 0.9
+        beta2: 0.95
+        weight_decay: 0.0
+        epsilon: 1e-8
+
+lr_scheduler:
+    scheduler: "constant_with_warmup"
+    params:
+        learning_rate: ${optimizer.params.learning_rate}
+        warmup_steps: 0
+
+training:
+    gradient_accumulation_steps: 2
+    batch_size_t2i: 1
+    batch_size_edit: 1
+    batch_size_mmu: 1
+    mixed_precision: "bf16"
+    enable_tf32: True
+    seed: 696
+    max_train_steps: 1000000
+    overfit_one_batch: False
+    cond_dropout_prob: 0.1
+    min_masking_rate: 0.0
+    label_smoothing: 0.0
+    max_grad_norm: 1.0
+    guidance_scale: 3
+    t2i_coeff: 1.0
+    mmu_coeff: 1.0
+    edit_coeff: 1.0
