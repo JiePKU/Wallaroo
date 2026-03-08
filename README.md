@@ -1,7 +1,7 @@
 # A Simple Baseline for Unifying Understanding, Generation, and Editing via Vanilla Next-token Prediction
 
 <div align="center" style="line-height: 1;">
-  <a href="https://arxiv.org/abs/2509.03498" target="_blank" style="margin: 2px;">
+  <a href="https://arxiv.org/abs/2603.04980" target="_blank" style="margin: 2px;">
     <img alt="Arxiv" src="https://img.shields.io/badge/Wallaroo-Paper-red?logo=arxiv&logoColor=red"  fill-opacity="1" style="display: inline-block; vertical-align: middle;"/>
   </a>
   <a href="https://huggingface.co/jiezhueval/Wallaroo" target="_blank" style="margin: 2px;">
